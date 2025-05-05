@@ -1,0 +1,314 @@
+from openai import OpenAI
+import json
+
+
+# Define the system prompt
+system_prompt = "You are an archimate expert .Generate structured JSON output for an ArchiMate model, covering all existing layers.ONLY EXISTING LAYERS SHALL BE INCLUDED. You will receive an enterprise description from the user and you should turn it into the json format given to you"
+
+# Define the user prompt
+user_prompt = "L’entreprise « FleetTrack » propose une plateforme de suivi et d’optimisation des flottes de véhicules, avec des capteurs GPS transmettant en temps réel la position et l’état des véhicules, une carte interactive pour les gestionnaires avec alertes en cas d’anomalies, un module d’optimisation des trajets basé sur le trafic et les contraintes, une application mobile pour les chauffeurs afin de recevoir des instructions et signaler des incidents, et un algorithme d’analyse des données générant des rapports pour les responsables logistiques."
+client = OpenAI()
+# Call OpenAI API with function calling
+completion = client.chat.completions.create(
+    model="gpt-4o-mini",
+    temperature=0,
+    messages=[
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ],
+    response_format={"type": "json_object"},
+    functions=[
+        {
+            "name": "generate_archimate_model",
+            "description": "Generates structured JSON data for an ArchiMate model covering multiple layers.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "layers": {
+                        "type": "array",
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "title": "Motivation Layer",
+                                    "type": "object",
+                                    "properties": {
+                                        "layer": {"const": "motivation"},
+                                        "elements": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {"type": "string"},
+                                                    "type": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "Stakeholder",
+                                                            "Driver",
+                                                            "Assessment",
+                                                            "Goal",
+                                                            "Outcome",
+                                                            "Principle",
+                                                            "Requirement",
+                                                            "Constraint",
+                                                            "Meaning",
+                                                            "Value",
+                                                        ],
+                                                    },
+                                                    "name": {"type": "string"},
+                                                    "description": {"type": "string"},
+                                                },
+                                                "required": ["id", "type", "name"],
+                                            },
+                                        },
+                                        "element-relationship": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "Composition",
+                                                    "Aggregation",
+                                                    "Assignment",
+                                                    "Influence",
+                                                    "Association",
+                                                ],
+                                            },
+                                        },
+                                    },
+                                    "required": [
+                                        "layer",
+                                        "elements",
+                                        "element-relationship",
+                                    ],
+                                },
+                                {
+                                    "title": "Strategy Layer",
+                                    "type": "object",
+                                    "properties": {
+                                        "layer": {"const": "strategy"},
+                                        "elements": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {"type": "string"},
+                                                    "type": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "Resource",
+                                                            "Capability",
+                                                            "Course of Action",
+                                                        ],
+                                                    },
+                                                    "name": {"type": "string"},
+                                                    "description": {"type": "string"},
+                                                },
+                                                "required": ["id", "type", "name"],
+                                            },
+                                        },
+                                        "element-relationship": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "Composition",
+                                                    "Aggregation",
+                                                    "Assignment",
+                                                    "Association",
+                                                ],
+                                            },
+                                        },
+                                    },
+                                    "required": [
+                                        "layer",
+                                        "elements",
+                                        "element-relationship",
+                                    ],
+                                },
+                                {
+                                    "title": "Business Layer",
+                                    "type": "object",
+                                    "properties": {
+                                        "layer": {"const": "business"},
+                                        "elements": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {"type": "string"},
+                                                    "type": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "Business Actor",
+                                                            "Business Role",
+                                                            "Business Collaboration",
+                                                            "Business Interface",
+                                                            "Business Process",
+                                                            "Business Function",
+                                                            "Business Interaction",
+                                                            "Business Event",
+                                                            "Business Service",
+                                                            "Business Object",
+                                                            "Contract",
+                                                            "Representation",
+                                                            "Product",
+                                                        ],
+                                                    },
+                                                    "name": {"type": "string"},
+                                                    "description": {"type": "string"},
+                                                },
+                                                "required": ["id", "type", "name"],
+                                            },
+                                        },
+                                        "element-relationship": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "Composition",
+                                                    "Aggregation",
+                                                    "Assignment",
+                                                    "Serving",
+                                                    "Access",
+                                                    "Association",
+                                                    "Triggering",
+                                                    "Flow",
+                                                    "Specialization",
+                                                ],
+                                            },
+                                        },
+                                    },
+                                    "required": [
+                                        "layer",
+                                        "elements",
+                                        "element-relationship",
+                                    ],
+                                },
+                                {
+                                    "title": "Application Layer",
+                                    "type": "object",
+                                    "properties": {
+                                        "layer": {"const": "application"},
+                                        "elements": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {"type": "string"},
+                                                    "type": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "Application Component",
+                                                            "Application Collaboration",
+                                                            "Application Interface",
+                                                            "Application Function",
+                                                            "Application Interaction",
+                                                            "Application Process",
+                                                            "Application Event",
+                                                            "Application Service",
+                                                            "Data Object",
+                                                        ],
+                                                    },
+                                                    "name": {"type": "string"},
+                                                    "description": {"type": "string"},
+                                                },
+                                                "required": ["id", "type", "name"],
+                                            },
+                                        },
+                                        "element-relationship": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "Composition",
+                                                    "Aggregation",
+                                                    "Assignment",
+                                                    "Serving",
+                                                    "Access",
+                                                    "Association",
+                                                    "Triggering",
+                                                    "Flow",
+                                                    "Specialization",
+                                                ],
+                                            },
+                                        },
+                                    },
+                                    "required": [
+                                        "layer",
+                                        "elements",
+                                        "element-relationship",
+                                    ],
+                                },
+                                {
+                                    "title": "Technology Layer",
+                                    "type": "object",
+                                    "properties": {
+                                        "layer": {"const": "technology"},
+                                        "elements": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {"type": "string"},
+                                                    "type": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "Node",
+                                                            "Device",
+                                                            "System Software",
+                                                            "Technology Collaboration",
+                                                            "Technology Interface",
+                                                            "Path",
+                                                            "Communication Network",
+                                                            "Technology Function",
+                                                            "Technology Process",
+                                                            "Technology Interaction",
+                                                            "Technology Event",
+                                                            "Technology Service",
+                                                            "Artifact",
+                                                        ],
+                                                    },
+                                                    "name": {"type": "string"},
+                                                    "description": {"type": "string"},
+                                                },
+                                                "required": ["id", "type", "name"],
+                                            },
+                                        },
+                                        "element-relationship": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "Composition",
+                                                    "Aggregation",
+                                                    "Assignment",
+                                                    "Serving",
+                                                    "Access",
+                                                    "Association",
+                                                    "Triggering",
+                                                    "Flow",
+                                                    "Specialization",
+                                                ],
+                                            },
+                                        },
+                                    },
+                                    "required": [
+                                        "layer",
+                                        "elements",
+                                        "element-relationship",
+                                    ],
+                                },
+                            ]
+                        },
+                    }
+                },
+                "required": ["layers"],
+            },
+        }
+    ],
+)
+# Extract and print the structured JSON output
+structured_json = completion.choices[0].message.content
+
+# structured_json = completion["choices"][0]["message"]["function_call"]["arguments"]
+print(json.dumps(json.loads(structured_json), indent=4))
+# print(completion.choices[0].message.content)
