@@ -1,7 +1,7 @@
 from openai import OpenAI
 import json
 import json
-from toDrawiojdid import json_to_drawio  # import the function
+from toDrawio import json_to_drawio  # import the function
 from jsonformat import formattt
 user_prompt = """
     Domain: Manufacturing & Logistics

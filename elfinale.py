@@ -1,5 +1,5 @@
-from toDrawiojdid import json_to_drawio
-from inshallah import text_to_json
+from toDrawio import json_to_drawio
+from prompt import text_to_json
 from beded2 import drawio_to_url
 
 
