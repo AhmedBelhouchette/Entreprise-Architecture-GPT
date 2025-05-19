@@ -25,7 +25,7 @@ def text_to_json(user_prompt,selected_layers):
 
     # Call OpenAI API with function calling
     completion = client.chat.completions.create(
-        model="gpt-4.1",  # Use a valid model name
+        model="gpt-4-turbo",
         temperature=0,
         messages=[
             {"role": "system", "content": system_prompt},

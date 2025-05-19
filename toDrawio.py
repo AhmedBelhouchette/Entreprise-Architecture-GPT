@@ -243,69 +243,160 @@ def create_connection(parent, connection_id, source, target, style=""):
 # sfdp	Scalable force-directed	Very large undirected graphs
 # twopi	Radial layout	Graphs with a central node
 # circo	Circular layout	Cyclic or circular structures
+import math
 import networkx as nx
 
 def calculate_layout(layers_data, engine="dot"):
     """
-    Compute (x, y) positions for ArchiMate elements for draw.io visualization,
-    using pygraphviz for layout.
+    Compute (x, y) positions for ArchiMate elements for draw.io visualization.
 
     Args:
         layers_data: List of layer dicts with 'elements' and 'element-relationship'
-        engine: Layout engine (e.g., 'dot', 'neato', etc.)
+        engine: Ignored, for compatibility
 
     Returns:
         Dict with keys (layer_idx, element_id) -> (x, y)
     """
-    import pygraphviz
-    from networkx.drawing.nx_agraph import to_agraph
-
-    layout_config = {
-        "horizontal_spacing": 120,
-        "vertical_spacing": 120,
-        "layer_spacing": 300,
-        "margin": 50,
-    }
-
     positions = {}
-    current_y = layout_config["margin"]
-
+    current_y = 70  # Initial margin
+    
+    # Layout configuration
+    horizontal_spacing = 180
+    vertical_spacing = 150
+    margin = 70
+    min_layer_height = 200
+    
     for layer_idx, layer in enumerate(layers_data):
         G = nx.DiGraph()
 
-        # Add elements as nodes
+        # Add elements
         for element in layer.get("elements", []):
             G.add_node(element["id"])
 
-        # Add relationships as edges
+        # Add relationships
         for rel in layer.get("element-relationship", []):
             G.add_edge(rel["from"], rel["to"])
 
+        pos = {}
         try:
-            A = to_agraph(G)
+            if G.number_of_nodes() > 0:
+                # Determine if graph is complex
+                is_complex = False
+                try:
+                    cycles = list(nx.simple_cycles(G))
+                    if cycles:
+                        is_complex = True
+                except:
+                    pass
+                    
+                if not is_complex:
+                    roots = [n for n in G.nodes() if G.in_degree(n) == 0]
+                    if len(roots) > 1 or any(G.out_degree(n) > 2 for n in G.nodes()):
+                        is_complex = True
+                
+                # Select appropriate layout parameters
+                if is_complex or G.number_of_nodes() > 10:
+                    width = max(5.0, len(G.nodes) * 0.7)
+                    vert_gap = 1.0
+                else:
+                    width = max(3.0, len(G.nodes) * 0.6)
+                    vert_gap = 1.5
+                
+                # Find root nodes for hierarchy
+                roots = [n for n in G.nodes() if G.in_degree(n) == 0]
+                if not roots:
+                    # If no root nodes found, use node with highest out_degree
+                    roots = [sorted(G.nodes(), key=lambda n: G.out_degree(n), reverse=True)[0]]
+                
+                # For multiple roots, create a virtual root
+                virtual_root_added = False
+                if len(roots) > 1:
+                    G.add_node("_virtual_root")
+                    for r in roots:
+                        G.add_edge("_virtual_root", r)
+                    root = "_virtual_root"
+                    virtual_root_added = True
+                else:
+                    root = roots[0]
+                
+                # Calculate hierarchical positions
+                visited = set()
+                pos = {}
+                
+                def _hierarchy_pos(G, node, left, right, vert_loc, xcenter, pos, visited):
+                    pos[node] = (xcenter, vert_loc)
+                    visited.add(node)
+                    
+                    # Get unvisited children
+                    children = [n for n in G.successors(node) if n not in visited]
+                    
+                    if not children:
+                        return pos
+                    
+                    # Calculate child spacing
+                    dx = (right - left) / len(children)
+                    dx = max(dx, width * 0.1 / max(1, len(G.nodes) - 1))  # Minimum spacing
+                    
+                    nextx = left
+                    for child in children:
+                        if child not in visited:
+                            # Give more space to nodes with children
+                            child_width = dx * (1 if G.out_degree(child) == 0 else 1.5)
+                            pos = _hierarchy_pos(G, child, 
+                                              nextx, nextx + child_width,
+                                              vert_loc - vert_gap, 
+                                              nextx + child_width/2,
+                                              pos, visited)
+                        nextx += dx
+                    
+                    return pos
+                
+                # Start hierarchy positioning from root
+                pos = _hierarchy_pos(G, root, 0, width, 0, width/2, {}, visited)
+                
+                # Remove virtual root if added
+                if virtual_root_added and "_virtual_root" in pos:
+                    del pos["_virtual_root"]
 
-            A.graph_attr.update(rankdir="TB", splines="true", nodesep="1.0", ranksep="1.0")
-            A.node_attr.update(shape="box", fixedsize="false")
-
-            A.layout(prog=engine)
-
+            # Calculate layer dimensions
+            max_y_in_layer = 0
+            max_x_in_layer = 0
+            
             for node in G.nodes():
-                pos = A.get_node(node).attr["pos"]
-                if pos:
-                    x, y = map(float, pos.split(","))
+                if node in pos:
+                    x, y = pos[node]
+                    max_y_in_layer = max(max_y_in_layer, -y)
+                    max_x_in_layer = max(max_x_in_layer, x)
 
-                    # Convert to draw.io-style coordinates
-                    adjusted_x = x + layout_config["margin"]
-                    adjusted_y = -y + current_y  # Flip Y
+            # Apply positions with adjusted spacing
+            for node in G.nodes():
+                if node in pos:
+                    x, y = pos[node]
+                else:
+                    # Handle any nodes not positioned by the algorithm
+                    x = (len(positions) % 5) * 0.2
+                    y = 0
+                
+                # Scale positions to actual spacing values
+                adjusted_x = x * horizontal_spacing + margin
+                adjusted_y = -y * vertical_spacing + current_y
+                
+                positions[(layer_idx, node)] = (adjusted_x, adjusted_y)
 
-                    positions[(layer_idx, node)] = (adjusted_x, adjusted_y)
+            # Calculate layer height, ensuring minimum height
+            layer_height = max(
+                min_layer_height,
+                (max_y_in_layer + 1) * vertical_spacing
+            )
+            current_y += layer_height + margin
 
         except Exception as e:
             print(f"[Warning] Layout failed for layer {layer_idx}: {e}")
 
-        current_y += layout_config["vertical_spacing"] + layout_config["layer_spacing"]
-
     return positions
+
+
+
 
 def json_to_drawio(json_data, output_file,display="dot"):
     """Convert ArchiMate JSON to a fully valid Draw.io XML file with proper positioning."""
